@@ -1,77 +1,77 @@
-import cv2
 import numpy as np
+import cv2
 import pandas as pd
-from pysal.lib import weights
-from pysal.explore import esda
 import matplotlib.pyplot as plt
 
-def preprocess_image(image_path):
-    """Read an image and convert it to grayscale."""
-    image = cv2.imread(image_path)
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    enhanced_image = cv2.equalizeHist(gray_image)
-    return enhanced_image
+def load_and_prepare_images(image_path1, image_path2):
+    image1 = cv2.imread(image_path1, cv2.IMREAD_GRAYSCALE)
+    image2 = cv2.imread(image_path2, cv2.IMREAD_GRAYSCALE)
+    
+    if image1.shape != image2.shape:
+        raise ValueError("Images must be of the same dimensions")
+    
+    return image1, image2
 
-def segment_image(enhanced_image):
-    """Segment the image to find contours."""
-    _, binary_image = cv2.threshold(enhanced_image, 127, 255, cv2.THRESH_BINARY)
-    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    return contours
+def downsample_image(image, factor):
+    return cv2.resize(image, (image.shape[1] // factor, image.shape[0] // factor), interpolation=cv2.INTER_AREA)
 
-def extract_features(contours):
-    """Extract coordinates and area of contours."""
-    coordinates = []
-    areas = []
+def morans_i(image1, image2, x, y, width, height):
+    flat_image1 = image1.flatten()
+    flat_image2 = image2.flatten()
 
-    for contour in contours:
-        M = cv2.moments(contour)
-        if M["m00"] != 0:
-            cX = int(M["m10"] / M["m00"])
-            cY = int(M["m01"] / M["m00"])
-            area = cv2.contourArea(contour) 
-            coordinates.append((cX, cY))
-            areas.append(area)  
+    mean1 = np.mean(flat_image1)
+    mean2 = np.mean(flat_image2)
 
-    return coordinates, areas
+    numerator = 0
+    denominator = (flat_image1[y * width + x] - mean1) ** 2
 
-def perform_spatial_analysis(coordinates, values):
-    """Perform spatial analysis using Moran's I."""
-    w = weights.KNN.from_array(np.array(coordinates), k=4)
-    moran = esda.Moran(values, w)
-    return moran.I, moran.p_sim
+    neighbors = [
+        (x - 1, y), (x + 1, y),  
+        (x, y - 1), (x, y + 1)   
+    ]
 
-def visualize_results(coordinates, values):
-    """Visualize the results with a colorful scatter plot."""
-    plt.figure(figsize=(10, 6))
-    scatter = plt.scatter(*zip(*coordinates), c=values, cmap='viridis', alpha=0.6, edgecolor='w')
-    plt.colorbar(scatter, label='Area Values')  
-    plt.title("Spatial Distribution of Contour Areas")
-    plt.xlabel("X Coordinate")
-    plt.ylabel("Y Coordinate")
-    plt.grid(True)
+    for nx, ny in neighbors:
+        if 0 <= nx < width and 0 <= ny < height:
+            neighbor_idx = ny * width + nx
+            numerator += (flat_image1[y * width + x] - mean1) * (flat_image2[neighbor_idx] - mean2)
+
+    I = (numerator / denominator) if denominator != 0 else 0
+    return I
+
+def main(image_path1, image_path2, output_csv, num_points=100, downsample_factor=1):
+    image1, image2 = load_and_prepare_images(image_path1, image_path2)
+
+    if downsample_factor > 1:
+        image1 = downsample_image(image1, downsample_factor)
+        image2 = downsample_image(image2, downsample_factor)
+
+    height, width = image1.shape
+
+    selected_indices = np.random.choice(height * width, num_points, replace=False)
+    results = []
+
+    for idx in selected_indices:
+        x = idx % width
+        y = idx // width
+        morans_value = morans_i(image1, image2, x, y, width, height)
+        results.append((x, y, morans_value))
+
+    df = pd.DataFrame(results, columns=['X', 'Y', "Moran's I"])
+    df.to_csv(output_csv, index=False)
+
+    plt.figure(figsize=(6, 6))
+    plt.imshow(image1, cmap='gray')
+    plt.title('Selected Points on Image 1')
+    plt.axis('off')
+
+    for (x, y, _) in results:
+        plt.scatter(x, y, color='red', s=10) 
+
     plt.show()
 
-def save_to_csv(coordinates, areas, output_path):
-    """Save the dataset to a CSV file."""
-    df = pd.DataFrame(coordinates, columns=['X', 'Y'])
-    df['Area'] = areas
-    df.to_csv(output_path, index=False)
-    print(f"Dataset saved to {output_path}")
-
-def main(image_path, output_path):
-    """Main function to process the image and generate the dataset."""
-    enhanced_image = preprocess_image(image_path)
-    contours = segment_image(enhanced_image)
-    coordinates, areas = extract_features(contours)
-
-    moran_i, p_value = perform_spatial_analysis(coordinates, areas)
-    visualize_results(coordinates, areas)
-
-    print(f"Moran's I: {moran_i}, p-value: {p_value}")
-
-    save_to_csv(coordinates, areas, output_path)
-
 if __name__ == "__main__":
-    image_path = '/home/sristy/Desktop/Medical-Image-Sensory/Colon/10x/1_colon_10x.tif'  
-    output_path = '/home/sristy/Desktop/Medical-Image-Sensory/spatial correlation coefficient/contour_data.csv'
-    main(image_path, output_path)
+    image_path1 = "/home/sristy/Desktop/Medical-Image-Sensory/Colon/10x/1_colon_10x.tif"
+    image_path2 = "/home/sristy/Desktop/Medical-Image-Sensory/Colon/10x/2_colon_10x.tif"
+    output_csv = "/home/sristy/Desktop/Medical-Image-Sensory/spatial correlation coefficient/moran_results.csv"
+    downsample_factor = 2 
+    main(image_path1, image_path2, output_csv, num_points=100, downsample_factor=downsample_factor)
