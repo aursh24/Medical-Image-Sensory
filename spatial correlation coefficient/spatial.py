@@ -70,8 +70,8 @@ def main(image_path1, image_path2, output_csv, num_points=100, downsample_factor
     plt.show()
 
 if __name__ == "__main__":
-    image_path1 = "/home/sristy/Desktop/Medical-Image-Sensory/Colon/10x/1_colon_10x.tif"
-    image_path2 = "/home/sristy/Desktop/Medical-Image-Sensory/Colon/10x/5_colon_10x.tif"
-    output_csv = "/home/sristy/Desktop/Medical-Image-Sensory/spatial correlation coefficient/moran_results1-5.csv"
+    image_path1 = "/home/sristy/Desktop/Medical-Image-Sensory/Colon/10x/6_colon_10x.tif"
+    image_path2 = "/home/sristy/Desktop/Medical-Image-Sensory/Colon/10x/10_colon_10x.tif"
+    output_csv = "/home/sristy/Desktop/Medical-Image-Sensory/spatial correlation coefficient/moran_results6-10.csv"
     downsample_factor = 2 
     main(image_path1, image_path2, output_csv, num_points=100, downsample_factor=downsample_factor)
