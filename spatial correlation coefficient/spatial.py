@@ -61,7 +61,7 @@ def main(image_path1, image_path2, output_csv, num_points=100, downsample_factor
 
     plt.figure(figsize=(6, 6))
     plt.imshow(image1, cmap='gray')
-    plt.title('Selected Points on Image 1')
+    plt.title('Selected Points on Image')
     plt.axis('off')
 
     for (x, y, _) in results:
@@ -71,7 +71,7 @@ def main(image_path1, image_path2, output_csv, num_points=100, downsample_factor
 
 if __name__ == "__main__":
     image_path1 = "/home/sristy/Desktop/Medical-Image-Sensory/Colon/10x/1_colon_10x.tif"
-    image_path2 = "/home/sristy/Desktop/Medical-Image-Sensory/Colon/10x/2_colon_10x.tif"
-    output_csv = "/home/sristy/Desktop/Medical-Image-Sensory/spatial correlation coefficient/moran_results.csv"
+    image_path2 = "/home/sristy/Desktop/Medical-Image-Sensory/Colon/10x/5_colon_10x.tif"
+    output_csv = "/home/sristy/Desktop/Medical-Image-Sensory/spatial correlation coefficient/moran_results1-5.csv"
     downsample_factor = 2 
     main(image_path1, image_path2, output_csv, num_points=100, downsample_factor=downsample_factor)
